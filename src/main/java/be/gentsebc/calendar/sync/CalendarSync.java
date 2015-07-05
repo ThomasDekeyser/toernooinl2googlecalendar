@@ -21,9 +21,7 @@ import org.joox.JOOX;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.Collections;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -50,11 +48,10 @@ public class CalendarSync {
   private static Credential authorize() throws Exception {
     String secretConfig = $(config).xpath("/config/google/clientSecrets").content();
     String credentialStoreConfig = $(config).xpath("/config/google/credentialStore").content();
-   
-    
+
     // load client secrets
     GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
-        JSON_FACTORY, new FileInputStream(secretConfig));
+            JSON_FACTORY, new InputStreamReader(new FileInputStream(secretConfig)));
     if (clientSecrets.getDetails().getClientId().startsWith("Enter")
         || clientSecrets.getDetails().getClientSecret().startsWith("Enter ")) {
       System.out.println(
