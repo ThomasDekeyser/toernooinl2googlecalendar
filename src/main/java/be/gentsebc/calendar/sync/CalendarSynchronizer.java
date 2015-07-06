@@ -121,11 +121,15 @@ public class CalendarSynchronizer {
     }
 
     public void syncTeams() throws IOException, ParseException {
+        long startTime,endTime=0L;
+        int runTime=0;
         for (Match value : $(document).xpath("//team").each()) {
+            startTime = System.nanoTime();
             String teamName = value.attr("name");
             String calendarName = giveCalendarName(teamName);
             String calendarId = giveCalendarId(calendarName);
             Events existingEvents = client.events().list(calendarId).execute();
+            logger.info("Starting sync for calendar '"+calendarName+"'/'"+calendarId+"'");
             try {
                 Thread.sleep(SLEEP_TIME_TO_AVOID_USER_RATE_LIMITS_AT_GOOGLE);
             } catch (InterruptedException e) {
@@ -135,6 +139,9 @@ public class CalendarSynchronizer {
                 addEventIfNeeded(valueEvent, existingEvents, calendarId);
             }
             removeExistingCompetitionEvents(calendarName);
+            endTime = System.nanoTime();
+            runTime = Math.round((endTime - startTime)/1000000000);
+            logger.info("Sync for calendar '"+calendarName+"' completed in "+runTime+" sec");
         }
     }
 
