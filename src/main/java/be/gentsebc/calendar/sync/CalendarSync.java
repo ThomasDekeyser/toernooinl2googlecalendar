@@ -31,78 +31,84 @@ import javax.xml.parsers.DocumentBuilder;
  */
 public class CalendarSync {
 
-  /** Global instance of the HTTP transport. */
-  private static final HttpTransport HTTP_TRANSPORT = new NetHttpTransport();
+    /**
+     * Global instance of the HTTP transport.
+     */
+    private static final HttpTransport HTTP_TRANSPORT = new NetHttpTransport();
 
-  /** Global instance of the JSON factory. */
-  private static final JsonFactory JSON_FACTORY = new JacksonFactory();
+    /**
+     * Global instance of the JSON factory.
+     */
+    private static final JsonFactory JSON_FACTORY = new JacksonFactory();
 
-  private static com.google.api.services.calendar.Calendar client;
+    private static com.google.api.services.calendar.Calendar client;
 
-  static final java.util.List<Calendar> addedCalendarsUsingBatch = Lists.newArrayList();
-  
-  private static Document config;
-  static Logger logger = Logger.getLogger(CalendarSync.class);
-  
-  /** Authorizes the installed application to access user's protected data. */
-  private static Credential authorize() throws Exception {
-    String secretConfig = $(config).xpath("/config/google/clientSecrets").content();
-    String credentialStoreConfig = $(config).xpath("/config/google/credentialStore").content();
+    static final java.util.List<Calendar> addedCalendarsUsingBatch = Lists.newArrayList();
 
-    // load client secrets
-    GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
-            JSON_FACTORY, new InputStreamReader(new FileInputStream(secretConfig)));
-    if (clientSecrets.getDetails().getClientId().startsWith("Enter")
-        || clientSecrets.getDetails().getClientSecret().startsWith("Enter ")) {
-      System.out.println(
-          "Enter Client ID and Secret from https://code.google.com/apis/console/?api=calendar "
-          + "into "+secretConfig);
-      System.exit(1);
+    private static Document config;
+    static Logger logger = Logger.getLogger(CalendarSync.class);
+
+    /**
+     * Authorizes the installed application to access user's protected data.
+     */
+    private static Credential authorize() throws Exception {
+        String secretConfig = $(config).xpath("/config/google/clientSecrets").content();
+        String credentialStoreConfig = $(config).xpath("/config/google/credentialStore").content();
+
+        // load client secrets
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
+                JSON_FACTORY, new InputStreamReader(new FileInputStream(secretConfig)));
+        if (clientSecrets.getDetails().getClientId().startsWith("Enter")
+                || clientSecrets.getDetails().getClientSecret().startsWith("Enter ")) {
+            System.out.println(
+                    "Enter Client ID and Secret from https://code.google.com/apis/console/?api=calendar "
+                            + "into " + secretConfig);
+            System.exit(1);
+        }
+        // set up file credential store
+        FileCredentialStore credentialStore = new FileCredentialStore(
+                new File(credentialStoreConfig), JSON_FACTORY);
+        // set up authorization code flow
+        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets,
+                Collections.singleton(CalendarScopes.CALENDAR)).setCredentialStore(credentialStore).build();
+        // authorize
+        return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
     }
-    // set up file credential store
-    FileCredentialStore credentialStore = new FileCredentialStore(
-        new File(credentialStoreConfig), JSON_FACTORY);
-    // set up authorization code flow
-    GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-        HTTP_TRANSPORT, JSON_FACTORY, clientSecrets,
-        Collections.singleton(CalendarScopes.CALENDAR)).setCredentialStore(credentialStore).build();
-    // authorize
-    return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
-  }
 
-  public static void main(String[] args) {
-    logger.info("CalendarSync started");
-    try {
-      loadConfiguration();
-      try {        
-        // authorizationclient
-        Credential credential = authorize();
+    public static void main(String[] args) {
+        logger.info("CalendarSync started");
+        try {
+            loadConfiguration();
+            try {
+                // authorizationclient
+                Credential credential = authorize();
 
-        // set up global Calendar instance
-        client = new com.google.api.services.calendar.Calendar.Builder(
-            HTTP_TRANSPORT, JSON_FACTORY, credential).setApplicationName(
-            "Google-CalendarSample/1.0").build();
-        logger.debug("Google client initialised...");
-        CalendarSynchronizer cs =new CalendarSynchronizer(config,client);
-        cs.execute();
-        
-      } catch (IOException e) {
-        logger.error(e.getMessage());
-      }
-    } catch (Throwable t) {
-      t.printStackTrace();
+                // set up global Calendar instance
+                client = new com.google.api.services.calendar.Calendar.Builder(
+                        HTTP_TRANSPORT, JSON_FACTORY, credential).setApplicationName(
+                        "Google-CalendarSample/1.0").build();
+                logger.debug("Google client initialised...");
+                CalendarSynchronizer cs = new CalendarSynchronizer(config, client);
+                cs.execute();
+
+            } catch (IOException e) {
+                logger.error(e.getMessage());
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        logger.info("CalendarSync ended");
+        System.exit(1);
     }
-    logger.info("CalendarSync ended");
-    System.exit(1);
-  }
 
-  private static void loadConfiguration() throws SAXException, IOException {    
-    String configFileName = System.getProperty("config");
-    if(configFileName == null) {
-      System.out.println("Please set systemproperty -Dconfig that points to XML configuration file");
-      System.exit(-1);
+    private static void loadConfiguration() throws SAXException, IOException {
+        String configFileName = System.getProperty("config");
+        if (configFileName == null) {
+            System.out.println("Please set systemproperty -Dconfig that points to XML configuration file");
+            System.exit(-1);
+        }
+        DocumentBuilder builder = JOOX.builder();
+        config = builder.parse(new File(configFileName));
     }
-    DocumentBuilder builder = JOOX.builder();
-    config =  builder.parse(new File(configFileName));    
-  }
 }

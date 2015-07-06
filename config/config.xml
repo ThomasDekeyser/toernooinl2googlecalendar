@@ -8,6 +8,7 @@
 		<tmpdir>/tmp/</tmpdir>
 		<debug>true</debug>
 	</webHarvest>
+	<pbo>http://localhost/pbo/api/calendarSync</pbo>
 	<calendars>
 		<calendar><!--  gentseBC provenciale 2012-2013 -->
 			<competitionId>93C46338-1469-47D2-8B71-4CB6AC2E2BC5</competitionId>
