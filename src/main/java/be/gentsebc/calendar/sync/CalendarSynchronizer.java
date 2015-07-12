@@ -238,7 +238,8 @@ public class CalendarSynchronizer {
      * @throws IOException
      */
     private String giveCalendarId(String calendarName) throws IOException {
-        CalendarList feed = client.calendarList().list().execute();
+        //WARNING: only support for 250 results at on page round
+        CalendarList feed = client.calendarList().list().setMaxResults(250).execute();
 
         boolean needToAdd = true;
         String calendarId = "";
