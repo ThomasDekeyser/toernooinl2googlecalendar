@@ -1,6 +1,6 @@
 #!/bin/sh
 
-JAVA_HOME=/usr/lib/jvm/java-6-openjdk-i386; export JAVA_HOME
+JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64; export JAVA_HOME
 
 DIRNAME=`dirname $0`
 cd $DIRNAME

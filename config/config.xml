@@ -1,6 +1,6 @@
 <config>
 	<google>
-		<clientSecrets>config/secret/client_secret_862155503918-beq4r837ib4mkkhedtthtc6qtnk7bklo.apps.googleusercontent.com.json</clientSecrets>
+		<clientSecrets>config/secret/client_secret_983674724993-8ls79amnjj0rdc9imvua823forvv35pl.apps.googleusercontent.com.json</clientSecrets>
 		<credentialStore>config/secret/calendar.json</credentialStore>
 	</google>
 	<webHarvest>
