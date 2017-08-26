@@ -43,8 +43,7 @@ import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
+import java.util.*;
 
 import javax.xml.parsers.DocumentBuilder;
 
@@ -82,7 +81,9 @@ public class CalendarSynchronizer {
         //Parse webHarvest results and sync with googleCalendar
         DocumentBuilder builder = JOOX.builder();
         document = builder.parse(httpRequest.execute().getContent());
+        giveExistingCalendars();
         syncTeams();
+        giveExistingCalendars();
     }
 
 
@@ -106,6 +107,24 @@ public class CalendarSynchronizer {
             document = builder.parse(new File(eventsXML));
             syncTeams();
         }
+    }
+
+    public void giveExistingCalendars() throws IOException, ParseException{
+        CalendarList feed = client.calendarList().list().setMaxResults(250).execute();
+        SortedMap<String,String> myCalendarList = new TreeMap<String, String>();
+        String calendarId = "";
+        if (feed.getItems() != null) {
+            for (CalendarListEntry entry : feed.getItems()) {
+                myCalendarList.put(entry.getSummary(),entry.getId());
+            }
+        }
+        Iterator<String> i = myCalendarList.keySet().iterator();
+        while (i.hasNext()) {
+            String key = i.next();
+            logger.info(key + "," + myCalendarList.get(key));
+        }
+
+
     }
 
     public void testJoox() {
@@ -164,8 +183,8 @@ public class CalendarSynchronizer {
         Date startDate = null;
         Date endDate = null;
         try {
-            startDate = df.parse(valueEvent.find("startDate").content() + " " + valueEvent.find("startTime").content());
-            endDate = df.parse(valueEvent.find("startDate").content() + " " + valueEvent.find("endTime").content());
+            startDate = df.parse(valueEvent.find("startDateTime").content());
+            endDate = df.parse(valueEvent.find("endDateTime").content());
         } catch (ParseException e) {
             logger.error("Unable to parse date for event " + subject);
             throw e;
@@ -283,6 +302,5 @@ public class CalendarSynchronizer {
     private String giveCalendarName(String teamName) {
         return teamName + " competitie";
     }
-
 
 }
