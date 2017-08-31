@@ -73,8 +73,8 @@ public class CalendarSynchronizer {
         DocumentBuilder builder = JOOX.builder();
         document = builder.parse(httpRequest.execute().getContent());
         giveExistingCalendars();
-        //syncTeams();
-        //giveExistingCalendars();
+        syncTeams();
+        giveExistingCalendars();
     }
 
 
@@ -113,7 +113,8 @@ public class CalendarSynchronizer {
         if (feed.getItems() != null) {
             for (CalendarListEntry entry : feed.getItems()) {
                 if (myCalendarList.containsKey(entry.getSummary())) {
-                    logger.warn("Duplicate calender found for key "+entry.getSummary()+". Please manually removed one of them because this only one of them will be updated and no garantees that it will be always the same one.");
+                    logger.error("Duplicate calender found for key "+entry.getSummary()+". Please manually removed one of them because this only one of them will be updated and no garantees that it will be always the same one.");
+                    System.exit(-1);
                 }
                 myCalendarList.put(entry.getSummary(),entry.getId());
             }
