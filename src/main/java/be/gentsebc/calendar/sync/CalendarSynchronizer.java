@@ -32,13 +32,10 @@ import org.apache.log4j.Logger;
 import org.joox.JOOX;
 import org.joox.Match;
 import org.w3c.dom.Document;
-import org.webharvest.definition.ScraperConfiguration;
-import org.webharvest.runtime.Scraper;
 import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -55,7 +52,6 @@ public class CalendarSynchronizer {
 
     private Document config;
     private Document document;
-    private Scraper scraper;
     private static com.google.api.services.calendar.Calendar client;
     static Logger logger = Logger.getLogger(CalendarSynchronizer.class);
     DateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
@@ -64,11 +60,6 @@ public class CalendarSynchronizer {
     public CalendarSynchronizer(Document myConfig, com.google.api.services.calendar.Calendar myClient) throws IOException {
         config = myConfig;
         client = myClient;
-        String webHarvestScaperConfig = $(config).xpath("/config/webHarvest/scraperscript").content();
-        boolean webHarvestDebug = $(config).xpath("/config/webHarvest/debug").content().equals("true") ? true : false;
-        ScraperConfiguration webHarvestConfig = new ScraperConfiguration(webHarvestScaperConfig);
-        scraper = new Scraper(webHarvestConfig, ".");
-        scraper.setDebug(webHarvestDebug);
     }
 
     public void execute() throws SAXException, IOException, ParseException {
@@ -82,50 +73,56 @@ public class CalendarSynchronizer {
         DocumentBuilder builder = JOOX.builder();
         document = builder.parse(httpRequest.execute().getContent());
         giveExistingCalendars();
-        syncTeams();
-        giveExistingCalendars();
+        //syncTeams();
+        //giveExistingCalendars();
     }
 
-
-    public void executeWebHarvest() throws SAXException, IOException, ParseException {
-        String webHarvestTmp = $(config).xpath("/config/webHarvest/tmpdir").content();
-
-        for (Match valueCalendar : $(config).xpath("//calendar").each()) {
-            String competitionId = valueCalendar.find("competitionId").content();
-            String clubId = valueCalendar.find("clubId").content();
-            String eventsXML = webHarvestTmp + "gentseBcCalendar_" + competitionId + ".xml";
-            logger.info("Start syncing calendar for clubId '" + clubId + "' on competionId '" + competitionId + "'. (tmp file '" + eventsXML + "')");
-
-            //Run webHarvest script
-            scraper.addVariableToContext("eventsXML", eventsXML);
-            scraper.addVariableToContext("competitionId", competitionId);
-            scraper.addVariableToContext("clubId", clubId);
-            scraper.execute();
-
-            //Parse webHarvest results and sync with googleCalendar
-            DocumentBuilder builder = JOOX.builder();
-            document = builder.parse(new File(eventsXML));
-            syncTeams();
-        }
-    }
 
     public void giveExistingCalendars() throws IOException, ParseException{
-        CalendarList feed = client.calendarList().list().setMaxResults(250).execute();
+
         SortedMap<String,String> myCalendarList = new TreeMap<String, String>();
-        String calendarId = "";
-        if (feed.getItems() != null) {
-            for (CalendarListEntry entry : feed.getItems()) {
-                myCalendarList.put(entry.getSummary(),entry.getId());
-            }
+
+        CalendarList feed = getCalendarListAndAddToGivenMap(myCalendarList,null);
+        while (feed.getNextPageToken() != null) {
+            feed = getCalendarListAndAddToGivenMap(myCalendarList,feed.getNextPageToken());
         }
+
         Iterator<String> i = myCalendarList.keySet().iterator();
         while (i.hasNext()) {
             String key = i.next();
             logger.info(key + "," + myCalendarList.get(key));
         }
+    }
+
+    private CalendarList getCalendarListAndAddToGivenMap(SortedMap<String, String> myCalendarList,String nextPageToken) throws IOException {
+        //Build call
+        com.google.api.services.calendar.Calendar.CalendarList.List calendarList = client.calendarList().list().setMaxResults(250);
+        if (nextPageToken != null) {
+            calendarList.setPageToken(nextPageToken);
+        }
+
+        //Execte call
+        CalendarList feed = calendarList.execute();
+
+        //Add to map
+        addCalenderItemsToGivenMap(feed,myCalendarList);
+        return feed;
+    }
+
+    private void addCalenderItemsToGivenMap(CalendarList feed, SortedMap<String,String> myCalendarList) {
+        if (feed.getItems() != null) {
+            for (CalendarListEntry entry : feed.getItems()) {
+                if (myCalendarList.containsKey(entry.getSummary())) {
+                    logger.warn("Duplicate calender found for key "+entry.getSummary()+". Please manually removed one of them because this only one of them will be updated and no garantees that it will be always the same one.");
+                }
+                myCalendarList.put(entry.getSummary(),entry.getId());
+            }
+        }
 
 
     }
+
+
 
     public void testJoox() {
         if (logger.isDebugEnabled()) {
