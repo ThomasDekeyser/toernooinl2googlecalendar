@@ -72,13 +72,13 @@ public class CalendarSynchronizer {
         //Parse webHarvest results and sync with googleCalendar
         DocumentBuilder builder = JOOX.builder();
         document = builder.parse(httpRequest.execute().getContent());
-        giveExistingCalendars();
-        syncTeams();
+        SortedMap<String,String> existingCalendarList = giveExistingCalendars();
+        syncTeams(existingCalendarList);
         giveExistingCalendars();
     }
 
 
-    public void giveExistingCalendars() throws IOException, ParseException{
+    public SortedMap<String,String> giveExistingCalendars() throws IOException, ParseException{
 
         SortedMap<String,String> myCalendarList = new TreeMap<String, String>();
 
@@ -92,6 +92,7 @@ public class CalendarSynchronizer {
             String key = i.next();
             logger.info(key + "," + myCalendarList.get(key));
         }
+        return myCalendarList;
     }
 
     private CalendarList getCalendarListAndAddToGivenMap(SortedMap<String, String> myCalendarList,String nextPageToken) throws IOException {
@@ -112,11 +113,11 @@ public class CalendarSynchronizer {
     private void addCalenderItemsToGivenMap(CalendarList feed, SortedMap<String,String> myCalendarList) {
         if (feed.getItems() != null) {
             for (CalendarListEntry entry : feed.getItems()) {
-                if (myCalendarList.containsKey(entry.getSummary())) {
+                if (myCalendarList.containsKey(entry.getSummary().toUpperCase())) {
                     logger.error("Duplicate calender found for key "+entry.getSummary()+". Please manually removed one of them because this only one of them will be updated and no garantees that it will be always the same one.");
                     System.exit(-1);
                 }
-                myCalendarList.put(entry.getSummary(),entry.getId());
+                myCalendarList.put(entry.getSummary().toUpperCase(),entry.getId());
             }
         }
 
@@ -137,14 +138,14 @@ public class CalendarSynchronizer {
         }
     }
 
-    public void syncTeams() throws IOException, ParseException {
+    public void syncTeams(SortedMap<String,String> existingCalendarList) throws IOException, ParseException {
         long startTime,endTime=0L;
         int runTime=0;
         for (Match value : $(document).xpath("//team").each()) {
             startTime = System.nanoTime();
             String teamName = value.attr("name");
             String calendarName = giveCalendarName(teamName);
-            String calendarId = giveCalendarId(calendarName);
+            String calendarId = giveCalendarId(calendarName, existingCalendarList);
             Events existingEvents = client.events().list(calendarId).execute();
             logger.info("Starting sync for calendar '"+calendarName+"'/'"+calendarId+"'");
             try {
@@ -254,24 +255,12 @@ public class CalendarSynchronizer {
      * @param calendarName
      * @throws IOException
      */
-    private String giveCalendarId(String calendarName) throws IOException {
-        //WARNING: only support for 250 results at on page round
-        CalendarList feed = client.calendarList().list().setMaxResults(250).execute();
+    private String giveCalendarId(String calendarName, SortedMap<String,String> existingCalendarList) throws IOException {
 
         boolean needToAdd = true;
-        String calendarId = "";
-        if (feed.getItems() != null) {
-            for (CalendarListEntry entry : feed.getItems()) {
-                if (entry.getSummary().equalsIgnoreCase(calendarName)) {
-                    calendarId = entry.getId();
-                    needToAdd = false;
-                    break;
-                }
+        String calendarId = existingCalendarList.get(calendarName.toUpperCase());
 
-            }
-        }
-
-        if (needToAdd) {
+        if (calendarId == null || calendarId.length()==0) {
             Calendar entry = new Calendar();
             entry.setSummary(calendarName);
 
