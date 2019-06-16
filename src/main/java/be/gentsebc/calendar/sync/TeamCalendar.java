@@ -44,7 +44,7 @@ public class TeamCalendar {
     }
 
     private void parse() throws IndexOutOfBoundsException, NumberFormatException{
-        this.teamName = googleTeamCalendarName.replaceAll(GOOGLE_CALENDAR_NAME_SUFFIX, "").trim();
+        this.teamName = googleTeamCalendarName.replaceAll(GOOGLE_CALENDAR_NAME_SUFFIX, "").replaceAll(GOOGLE_CALENDAR_NAME_SUFFIX_UPPER,"").trim();
         int indexOfTeamNumber = teamName.lastIndexOf(" ") + 1;
 
         this.clubName = teamName.substring(0, indexOfTeamNumber).trim();

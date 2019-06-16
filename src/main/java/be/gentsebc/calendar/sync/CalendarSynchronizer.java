@@ -65,7 +65,7 @@ public class CalendarSynchronizer {
         DocumentBuilder builder = JOOX.builder();
         document = builder.parse(httpRequest.execute().getContent());
         List<TeamCalendar> existingCalendarList = giveExistingCalendars();
-        //syncTeams(existingCalendarList);
+        syncTeams(existingCalendarList);
         report("-------------Active teams with an existing calendar", giveActiveTeamsWithExistingCalender());
     }
 
