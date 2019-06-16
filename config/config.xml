@@ -3,20 +3,6 @@
 		<clientSecrets>config/secret/client_secret_983674724993-8ls79amnjj0rdc9imvua823forvv35pl.apps.googleusercontent.com.json</clientSecrets>
 		<credentialStore>config/secret/calendar.json</credentialStore>
 	</google>
-	<webHarvest>
-		<scraperscript>config/webHarvest-agendaGentseBC-bundled.xml</scraperscript>
-		<tmpdir>/tmp/</tmpdir>
-		<debug>true</debug>
-	</webHarvest>
-	<pbo>http://localhost/pbo/api/calendarSync</pbo>
-	<calendars>
-		<calendar><!--  gentseBC provenciale 2012-2013 -->
-			<competitionId>93C46338-1469-47D2-8B71-4CB6AC2E2BC5</competitionId>
-			<clubId>30</clubId>		
-		</calendar>
-		<calendar><!-- gentseBC liga 2012-2013 -->
-			<competitionId>FC8C6496-B6B3-4450-BA3A-78585EC61D2D</competitionId>
-			<clubId>27</clubId>		
-		</calendar>
-	</calendars>
+
+	<pbo>http://competitie.badminton-pbo.be/api/calendarSync</pbo>
 </config>

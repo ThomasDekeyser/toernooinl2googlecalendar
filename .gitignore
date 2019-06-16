@@ -1,0 +1,5 @@
+.idea
+*.iml
+calendarSync.log*
+config/secret
+target
