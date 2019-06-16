@@ -43,10 +43,9 @@ public class CalendarSync {
 
     private static com.google.api.services.calendar.Calendar client;
 
-    static final java.util.List<Calendar> addedCalendarsUsingBatch = Lists.newArrayList();
 
     private static Document config;
-    static Logger logger = Logger.getLogger(CalendarSync.class);
+    private static Logger logger = Logger.getLogger(CalendarSync.class);
 
     /**
      * Authorizes the installed application to access user's protected data.

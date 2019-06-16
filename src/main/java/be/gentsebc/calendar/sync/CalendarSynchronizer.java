@@ -1,17 +1,3 @@
-/*
- * Copyright (c) 2011 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
- */
-
 package be.gentsebc.calendar.sync;
 
 import static org.joox.JOOX.$;
@@ -28,13 +14,13 @@ import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.log4j.Logger;
 import org.joox.JOOX;
 import org.joox.Match;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.text.DateFormat;
@@ -50,19 +36,25 @@ import javax.xml.parsers.DocumentBuilder;
 public class CalendarSynchronizer {
 
 
+    private static Logger logger = Logger.getLogger(CalendarSynchronizer.class);
+    private static com.google.api.services.calendar.Calendar client;
+    private static int SLEEP_TIME_TO_AVOID_USER_RATE_LIMITS_AT_GOOGLE = 1000;
+    private static List<String> CALENDAR_NAMES_TO_IGNORE = ImmutableList.<String>builder()
+            .add("pbo.competitie.agenda@gmail.com")
+            .add("Feestdagen in België")
+            .build();
+
+
+    private DateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
     private Document config;
     private Document document;
-    private static com.google.api.services.calendar.Calendar client;
-    static Logger logger = Logger.getLogger(CalendarSynchronizer.class);
-    DateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-    private static int SLEEP_TIME_TO_AVOID_USER_RATE_LIMITS_AT_GOOGLE = 1000;
 
     public CalendarSynchronizer(Document myConfig, com.google.api.services.calendar.Calendar myClient) throws IOException {
         config = myConfig;
         client = myClient;
     }
 
-    public void execute() throws SAXException, IOException, ParseException {
+    void execute() throws SAXException, IOException, ParseException {
         String urlString = $(config).xpath("/config/pbo").content();
 
         HttpTransport HTTP_TRANSPORT = new NetHttpTransport();
@@ -72,30 +64,27 @@ public class CalendarSynchronizer {
         //Parse webHarvest results and sync with googleCalendar
         DocumentBuilder builder = JOOX.builder();
         document = builder.parse(httpRequest.execute().getContent());
-        SortedMap<String,String> existingCalendarList = giveExistingCalendars();
-        syncTeams(existingCalendarList);
-        giveExistingCalendars();
+        List<TeamCalendar> existingCalendarList = giveExistingCalendars();
+        //syncTeams(existingCalendarList);
+        report("-------------Active teams with an existing calendar", giveActiveTeamsWithExistingCalender());
     }
 
 
-    public SortedMap<String,String> giveExistingCalendars() throws IOException, ParseException{
+    private List<TeamCalendar> giveExistingCalendars() throws IOException, ParseException{
 
-        SortedMap<String,String> myCalendarList = new TreeMap<String, String>();
+        List<TeamCalendar> teamCalendars = new ArrayList<>();
 
-        CalendarList feed = getCalendarListAndAddToGivenMap(myCalendarList,null);
+        CalendarList feed = getCalendarListAndAddToGivenList(teamCalendars,null);
         while (feed.getNextPageToken() != null) {
-            feed = getCalendarListAndAddToGivenMap(myCalendarList,feed.getNextPageToken());
+            feed = getCalendarListAndAddToGivenList(teamCalendars,feed.getNextPageToken());
         }
 
-        Iterator<String> i = myCalendarList.keySet().iterator();
-        while (i.hasNext()) {
-            String key = i.next();
-            logger.info(key + "," + myCalendarList.get(key));
-        }
-        return myCalendarList;
+        teamCalendars.sort(new TeamCalendarComparator());
+
+        return teamCalendars;
     }
 
-    private CalendarList getCalendarListAndAddToGivenMap(SortedMap<String, String> myCalendarList,String nextPageToken) throws IOException {
+    private CalendarList getCalendarListAndAddToGivenList(List<TeamCalendar> myCalendarList, String nextPageToken) throws IOException {
         //Build call
         com.google.api.services.calendar.Calendar.CalendarList.List calendarList = client.calendarList().list().setMaxResults(250);
         if (nextPageToken != null) {
@@ -106,25 +95,30 @@ public class CalendarSynchronizer {
         CalendarList feed = calendarList.execute();
 
         //Add to map
-        addCalenderItemsToGivenMap(feed,myCalendarList);
+        addCalenderItemsToGivenList(feed, myCalendarList);
         return feed;
     }
 
-    private void addCalenderItemsToGivenMap(CalendarList feed, SortedMap<String,String> myCalendarList) {
+    private void addCalenderItemsToGivenList(CalendarList feed, List<TeamCalendar> myCalendarList) {
         if (feed.getItems() != null) {
             for (CalendarListEntry entry : feed.getItems()) {
-                if (myCalendarList.containsKey(entry.getSummary().toUpperCase())) {
-                    logger.error("Duplicate calender found for key "+entry.getSummary()+". Please manually removed one of them because this only one of them will be updated and no garantees that it will be always the same one.");
-                    System.exit(-1);
+                if (!CALENDAR_NAMES_TO_IGNORE.contains(entry.getSummary())) {
+                    try {
+                        TeamCalendar teamCalendar = new TeamCalendar(entry.getSummary(), entry.getId());
+                        if (myCalendarList.contains(teamCalendar)) {
+                            logger.error("Duplicate calender found for key "+entry.getSummary()+". Please manually removed one of them because this only one of them will be updated and no garantees that it will be always the same one.");
+                            System.exit(-1);
+                        }
+                        myCalendarList.add(new TeamCalendar(entry.getSummary(),entry.getId()));
+                    } catch (IndexOutOfBoundsException | NumberFormatException e) {
+                        logger.warn("Unable to parse team calendar with name "+ entry.getSummary());
+                    }
                 }
-                myCalendarList.put(entry.getSummary().toUpperCase(),entry.getId());
             }
         }
 
 
     }
-
-
 
     public void testJoox() {
         if (logger.isDebugEnabled()) {
@@ -138,16 +132,17 @@ public class CalendarSynchronizer {
         }
     }
 
-    public void syncTeams(SortedMap<String,String> existingCalendarList) throws IOException, ParseException {
+    void syncTeams(List<TeamCalendar> existingCalendarList) throws IOException, ParseException {
         long startTime,endTime=0L;
         int runTime=0;
         for (Match value : $(document).xpath("//team").each()) {
             startTime = System.nanoTime();
             String teamName = value.attr("name");
-            String calendarName = giveCalendarName(teamName);
-            String calendarId = giveCalendarId(calendarName, existingCalendarList);
+            TeamCalendar teamCalendar = new TeamCalendar(teamName);
+
+            String calendarId = createRemoteCalendarIfNonExisting(teamCalendar, existingCalendarList);
             Events existingEvents = client.events().list(calendarId).execute();
-            logger.info("Starting sync for calendar '"+calendarName+"'/'"+calendarId+"'");
+            logger.info("Starting sync for calendar "+teamCalendar);
             try {
                 Thread.sleep(SLEEP_TIME_TO_AVOID_USER_RATE_LIMITS_AT_GOOGLE);
             } catch (InterruptedException e) {
@@ -156,10 +151,9 @@ public class CalendarSynchronizer {
             for (Match valueEvent : $(document).xpath("//team[@name='" + teamName + "']/event").each()) {
                 addEventIfNeeded(valueEvent, existingEvents, calendarId);
             }
-            removeExistingCompetitionEvents(calendarName);
             endTime = System.nanoTime();
             runTime = Math.round((endTime - startTime)/1000000000);
-            logger.info("Sync for calendar '"+calendarName+"' completed in "+runTime+" sec");
+            logger.info("Sync for calendar '"+teamCalendar.getTeamName()+"' completed in "+runTime+" sec");
         }
     }
 
@@ -242,31 +236,31 @@ public class CalendarSynchronizer {
     }
 
     /**
-     * @param calendarName
-     */
-    private void removeExistingCompetitionEvents(String calendarName) {
-
-
-    }
-
-    /**
-     * Return calender for a given calendarName. If not existing, calenderName will be created
+     * Return calender for a given teamCalendar. If not existing, calenderName will be created
      *
-     * @param calendarName
      * @throws IOException
      */
-    private String giveCalendarId(String calendarName, SortedMap<String,String> existingCalendarList) throws IOException {
+    private String createRemoteCalendarIfNonExisting(TeamCalendar teamCalendarToFind, List<TeamCalendar> existingCalendarList) {
 
-        boolean needToAdd = true;
-        String calendarId = existingCalendarList.get(calendarName.toUpperCase());
+        return existingCalendarList.stream()
+                .filter(teamCalendar -> teamCalendar.getGoogleTeamCalendarName().equalsIgnoreCase(teamCalendarToFind.getGoogleTeamCalendarName()))
+                .findAny()
+                .orElseGet(() -> {
+                    createTeamCalendar(teamCalendarToFind);
+                    return teamCalendarToFind;
+                })
+                .getGoogleCalendarId();
+    }
 
-        if (calendarId == null || calendarId.length()==0) {
+
+    private static String createTeamCalendar(TeamCalendar teamCalendar) {
+        try {
             Calendar entry = new Calendar();
-            entry.setSummary(calendarName);
+            entry.setSummary(teamCalendar.getGoogleTeamCalendarName());
 
             Calendar result = client.calendars().insert(entry).execute();
             //View.display(result);
-            calendarId = result.getId();
+            String calendarId = result.getId();
 
             AclRule rule = new AclRule();
             Scope scope = new Scope();
@@ -278,16 +272,40 @@ public class CalendarSynchronizer {
 
             AclRule createdRule = client.acl().insert(calendarId, rule).execute();
 
+            teamCalendar.setGoogleCalendarId(calendarId);
+
+            return calendarId;
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create new calendar", e);
         }
-        return calendarId;
+
     }
 
-    /**
-     * @param teamName
-     * @return
-     */
-    private String giveCalendarName(String teamName) {
-        return teamName + " competitie";
+
+    private void report(String header, List<TeamCalendar> teamCalendars) {
+        logger.info(header);
+        teamCalendars.stream()
+                .filter( teamCalendar -> !teamCalendar.getClubName().startsWith("TESTCLUB"))
+                .forEach(teamCalendar -> logger.info(String.format("%s,%s", teamCalendar.getTeamName() ,teamCalendar.getGoogleCalendarId())));
     }
+
+    private List<TeamCalendar> giveActiveTeamsWithExistingCalender() throws IOException, ParseException {
+        List<TeamCalendar> result = new ArrayList<>();
+
+        List<TeamCalendar> teamCalendars = giveExistingCalendars();
+
+        $(document).xpath("//team").each().forEach(value -> {
+            String teamName = value.attr("name");
+            TeamCalendar teamCalendar = new TeamCalendar(teamName);
+            teamCalendars.stream()
+                    .filter(t -> t.getGoogleTeamCalendarName().equalsIgnoreCase(teamCalendar.getGoogleTeamCalendarName()))
+                    .findAny()
+                    .ifPresent(result::add);
+        });
+        result.sort(new TeamCalendarComparator());
+        return result;
+    }
+
 
 }
