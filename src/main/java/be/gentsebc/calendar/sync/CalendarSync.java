@@ -1,7 +1,5 @@
 package be.gentsebc.calendar.sync;
 
-import static org.joox.JOOX.$;
-
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.java6.auth.oauth2.FileCredentialStore;
@@ -13,18 +11,19 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.calendar.CalendarScopes;
-import com.google.api.services.calendar.model.Calendar;
-import com.google.common.collect.Lists;
-
 import org.apache.log4j.Logger;
 import org.joox.JOOX;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
-import java.io.*;
+import javax.xml.parsers.DocumentBuilder;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Collections;
 
-import javax.xml.parsers.DocumentBuilder;
+import static org.joox.JOOX.$;
 
 /**
  * @author Thoomas Dekeyser
@@ -88,8 +87,14 @@ public class CalendarSync {
                         HTTP_TRANSPORT, JSON_FACTORY, credential).setApplicationName(
                         "Google-CalendarSample/1.0").build();
                 logger.debug("Google client initialised...");
-                CalendarSynchronizer cs = new CalendarSynchronizer(config, client);
-                cs.execute();
+                if (Boolean.getBoolean("fix")) {
+                    CalendarFixer cf = new CalendarFixer(config,client);
+                    cf.execute();
+                } else {
+                    CalendarSynchronizer cs = new CalendarSynchronizer(config, client);
+                    cs.execute();
+                }
+
 
             } catch (IOException e) {
                 logger.error(e.getMessage());

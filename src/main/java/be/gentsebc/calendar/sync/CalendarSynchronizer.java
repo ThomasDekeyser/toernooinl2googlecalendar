@@ -1,19 +1,13 @@
 package be.gentsebc.calendar.sync;
 
-import static org.joox.JOOX.$;
-
-import com.google.api.client.http.*;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestFactory;
+import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.DateTime;
-import com.google.api.services.calendar.model.AclRule;
+import com.google.api.services.calendar.model.*;
 import com.google.api.services.calendar.model.AclRule.Scope;
-import com.google.api.services.calendar.model.Calendar;
-import com.google.api.services.calendar.model.CalendarList;
-import com.google.api.services.calendar.model.CalendarListEntry;
-import com.google.api.services.calendar.model.Event;
-import com.google.api.services.calendar.model.EventDateTime;
-import com.google.api.services.calendar.model.Events;
-
 import com.google.common.collect.ImmutableList;
 import org.apache.log4j.Logger;
 import org.joox.JOOX;
@@ -21,14 +15,18 @@ import org.joox.Match;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
 import java.io.IOException;
 import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
 
-import javax.xml.parsers.DocumentBuilder;
+import static org.joox.JOOX.$;
 
 /**
  * @author Thomas Dekeyser
@@ -64,61 +62,11 @@ public class CalendarSynchronizer {
         //Parse webHarvest results and sync with googleCalendar
         DocumentBuilder builder = JOOX.builder();
         document = builder.parse(httpRequest.execute().getContent());
-        List<TeamCalendar> existingCalendarList = giveExistingCalendars();
+        List<TeamCalendar> existingCalendarList = new GoogleCalenderFetcher(client).giveExistingCalendars();
         syncTeams(existingCalendarList);
         report("-------------Active teams with an existing calendar", giveActiveTeamsWithExistingCalender());
     }
 
-
-    private List<TeamCalendar> giveExistingCalendars() throws IOException, ParseException{
-
-        List<TeamCalendar> teamCalendars = new ArrayList<>();
-
-        CalendarList feed = getCalendarListAndAddToGivenList(teamCalendars,null);
-        while (feed.getNextPageToken() != null) {
-            feed = getCalendarListAndAddToGivenList(teamCalendars,feed.getNextPageToken());
-        }
-
-        teamCalendars.sort(new TeamCalendarComparator());
-
-        return teamCalendars;
-    }
-
-    private CalendarList getCalendarListAndAddToGivenList(List<TeamCalendar> myCalendarList, String nextPageToken) throws IOException {
-        //Build call
-        com.google.api.services.calendar.Calendar.CalendarList.List calendarList = client.calendarList().list().setMaxResults(250);
-        if (nextPageToken != null) {
-            calendarList.setPageToken(nextPageToken);
-        }
-
-        //Execte call
-        CalendarList feed = calendarList.execute();
-
-        //Add to map
-        addCalenderItemsToGivenList(feed, myCalendarList);
-        return feed;
-    }
-
-    private void addCalenderItemsToGivenList(CalendarList feed, List<TeamCalendar> myCalendarList) {
-        if (feed.getItems() != null) {
-            for (CalendarListEntry entry : feed.getItems()) {
-                if (!CALENDAR_NAMES_TO_IGNORE.contains(entry.getSummary())) {
-                    try {
-                        TeamCalendar teamCalendar = new TeamCalendar(entry.getSummary(), entry.getId());
-                        if (myCalendarList.contains(teamCalendar)) {
-                            logger.error("Duplicate calender found for key "+entry.getSummary()+". Please manually removed one of them because this only one of them will be updated and no garantees that it will be always the same one.");
-                            System.exit(-1);
-                        }
-                        myCalendarList.add(new TeamCalendar(entry.getSummary(),entry.getId()));
-                    } catch (IndexOutOfBoundsException | NumberFormatException e) {
-                        logger.warn("Unable to parse team calendar with name "+ entry.getSummary());
-                    }
-                }
-            }
-        }
-
-
-    }
 
     public void testJoox() {
         if (logger.isDebugEnabled()) {
@@ -293,7 +241,7 @@ public class CalendarSynchronizer {
     private List<TeamCalendar> giveActiveTeamsWithExistingCalender() throws IOException, ParseException {
         List<TeamCalendar> result = new ArrayList<>();
 
-        List<TeamCalendar> teamCalendars = giveExistingCalendars();
+        List<TeamCalendar> teamCalendars = new GoogleCalenderFetcher(client).giveExistingCalendars();
 
         $(document).xpath("//team").each().forEach(value -> {
             String teamName = value.attr("name");
