@@ -85,22 +85,27 @@ public class CalendarFixer {
         document = builder.parse(httpRequest.execute().getContent());
         List<TeamCalendar> existingCalendarList = new GoogleCalenderFetcher(client).giveExistingCalendars();
 
+
+        TeamNameMapper teamNameMapper = new TeamNameMapper(
+                $(document).xpath("//team").each().stream().map(match -> match.attr("name")).collect(Collectors.toList()),
+                existingCalendarList.stream().map(TeamCalendar::getTeamName).collect(Collectors.toList()));
+
         List<TeamCalendar> existingCalendarListToCheck = existingCalendarList.stream()
-                .filter(t -> TEAMS_TO_CHECK.contains(t.getTeamName()))
+                .filter(t -> TEAMS_TO_CHECK.contains(teamNameMapper.getTeamNameAccordingVBL(t.getTeamName())))
                 .collect(Collectors.toList());
 
-        fixTeams(existingCalendarListToCheck);
+        fixTeams(existingCalendarListToCheck, teamNameMapper);
     }
 
 
 
-    void fixTeams(List<TeamCalendar> existingCalendarList) throws IOException, ParseException {
+    void fixTeams(List<TeamCalendar> existingCalendarList, TeamNameMapper teamNameMapper) throws IOException, ParseException {
         Date now = new Date();
 
         for(TeamCalendar teamCalendar: existingCalendarList) {
             Events existingEvents = client.events().list(teamCalendar.getGoogleCalendarId()).execute();
 
-            List<String> ontmoetingThatAreCorrect = $(document).xpath("//team[@name='" + teamCalendar.getTeamName() + "']/event").each().stream()
+            List<String> ontmoetingThatAreCorrect = $(document).xpath("//team[@name='" + teamNameMapper.getTeamNameAccordingVBL(teamCalendar.getTeamName()) + "']/event").each().stream()
                     .map(match -> match.find("subject").content().toUpperCase())
                     .collect(Collectors.toList());
 
