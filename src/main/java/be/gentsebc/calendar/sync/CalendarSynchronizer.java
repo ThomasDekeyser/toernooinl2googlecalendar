@@ -21,6 +21,8 @@ import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -87,10 +89,12 @@ public class CalendarSynchronizer {
             startTime = System.nanoTime();
             String teamName = value.attr("name");
             TeamCalendar teamCalendar = new TeamCalendar(teamName);
-
             String calendarId = createRemoteCalendarIfNonExisting(teamCalendar, existingCalendarList);
-            Events existingEvents = client.events().list(calendarId).execute();
-            logger.info("Starting sync for calendar "+teamCalendar);
+
+            //Only look at events starting from a year ago.
+            DateTime filterStartDate = new DateTime(Date.from(LocalDate.now().minusDays(365).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+            Events existingEvents = client.events().list(calendarId).setMaxResults(2500).setTimeMin(filterStartDate).execute();
+            logger.info("Starting sync for calendar " + teamCalendar);
             try {
                 Thread.sleep(SLEEP_TIME_TO_AVOID_USER_RATE_LIMITS_AT_GOOGLE);
             } catch (InterruptedException e) {
@@ -100,8 +104,8 @@ public class CalendarSynchronizer {
                 addEventIfNeeded(valueEvent, existingEvents, calendarId);
             }
             endTime = System.nanoTime();
-            runTime = Math.round((endTime - startTime)/1000000000);
-            logger.info("Sync for calendar '"+teamCalendar.getTeamName()+"' completed in "+runTime+" sec");
+            runTime = Math.round((endTime - startTime) / 1000000000);
+            logger.info("Sync for calendar '" + teamCalendar.getTeamName() + "' completed in " + runTime + " sec");
         }
     }
 
@@ -116,7 +120,7 @@ public class CalendarSynchronizer {
         if (logger.isDebugEnabled()) {
             logger.debug("Checking event " + subject);
         }
-        Event matchingEvent = null;
+        List<Event> matchingEvents = new ArrayList<>();
 
         Event event = new Event();
         event.setSummary(subject);
@@ -140,13 +144,21 @@ public class CalendarSynchronizer {
         if (existingEvents.getItems() != null) {
             for (Event entry : existingEvents.getItems()) {
                 if (entry.getSummary() != null && entry.getSummary().equalsIgnoreCase(subject)) {
-                    matchingEvent = entry;
-                    break;
+                    matchingEvents.add(entry);
                 }
             }
         }
 
-        if (matchingEvent != null) {
+
+        if (matchingEvents.size() > 0) {
+
+            for (int i = 0; i < matchingEvents.size() - 1; i++) {
+                logger.info("Deleting duplicate event " +i+ ":" + subject);
+                client.events().delete(calendarId, matchingEvents.get(i).getId()).execute();
+            }
+
+
+            Event matchingEvent = matchingEvents.get(matchingEvents.size()-1);
             //Step2. Check if other eventproperties are equal: {subject equals && startdate equal && location equal }
             if (matchingEvent.getStart() != null
                     && matchingEvent.getStart().getDateTime().getValue() == event.getStart().getDateTime().getValue()
