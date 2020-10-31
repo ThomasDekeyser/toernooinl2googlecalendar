@@ -8,6 +8,8 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.model.*;
 import com.google.api.services.calendar.model.AclRule.Scope;
+import com.google.api.services.calendar.model.Calendar;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import org.apache.log4j.Logger;
 import org.joox.JOOX;
@@ -23,10 +25,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.TimeZone;
+import java.util.*;
 
 import static org.joox.JOOX.$;
 
@@ -48,10 +47,12 @@ public class CalendarSynchronizer {
     private DateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
     private Document config;
     private Document document;
+    private ToernooiNlGrapper toernooiNlGrapper;
 
     public CalendarSynchronizer(Document myConfig, com.google.api.services.calendar.Calendar myClient) throws IOException {
         config = myConfig;
         client = myClient;
+        this.toernooiNlGrapper = new ToernooiNlGrapper("DB2CA04D-D29F-4538-B46C-92A24A83B68B");
     }
 
     void execute() throws SAXException, IOException, ParseException {
@@ -109,9 +110,15 @@ public class CalendarSynchronizer {
         }
     }
 
+
+
+
+
+
     /**
      * @param valueEvent
      * @param existingEvents
+
      * @throws IOException
      * @throws ParseException
      */
@@ -120,11 +127,13 @@ public class CalendarSynchronizer {
         if (logger.isDebugEnabled()) {
             logger.debug("Checking event " + subject);
         }
+        String locationDescription = valueEvent.find("location").content();
+        locationDescription = Strings.isNullOrEmpty(locationDescription) ? this.toernooiNlGrapper.getLocationDescription(valueEvent.find("matchId").content()) : locationDescription;
         List<Event> matchingEvents = new ArrayList<>();
 
         Event event = new Event();
         event.setSummary(subject);
-        event.setLocation(valueEvent.find("location").content());
+        event.setLocation(locationDescription);
         Date startDate = null;
         Date endDate = null;
         try {
