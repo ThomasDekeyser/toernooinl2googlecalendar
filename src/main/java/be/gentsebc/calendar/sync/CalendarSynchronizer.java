@@ -1,5 +1,6 @@
 package be.gentsebc.calendar.sync;
 
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestFactory;
@@ -52,7 +53,7 @@ public class CalendarSynchronizer {
     public CalendarSynchronizer(Document myConfig, com.google.api.services.calendar.Calendar myClient) throws IOException {
         config = myConfig;
         client = myClient;
-        this.toernooiNlGrapper = new ToernooiNlGrapper("DB2CA04D-D29F-4538-B46C-92A24A83B68B");
+        this.toernooiNlGrapper = new ToernooiNlGrapper($(config).xpath("/config/pboCompetitionId").content());
     }
 
     void execute() throws SAXException, IOException, ParseException {
@@ -163,7 +164,14 @@ public class CalendarSynchronizer {
 
             for (int i = 0; i < matchingEvents.size() - 1; i++) {
                 logger.info("Deleting duplicate event " +i+ ":" + subject);
-                client.events().delete(calendarId, matchingEvents.get(i).getId()).execute();
+                try {
+                    client.events().delete(calendarId, matchingEvents.get(i).getId()).execute();
+                } catch (GoogleJsonResponseException ex) {
+                   if (ex.getStatusCode() == 410) {
+                       logger.debug("Event "+ i+ "already deleted");
+                   }
+                }
+
             }
 
 
