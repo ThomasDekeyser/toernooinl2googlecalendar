@@ -13,9 +13,10 @@ jobs:
           distribution: 'temurin'
           java-version: '8'
 
-      - uses: actions/download-artifact@v3
+      - uses: dsaltares/fetch-gh-release-asset@master
         with:
-          name: toernooinl2googlecalendar-1.0-full.jar
+          version: "tags/1.0"
+          file: toernooinl2googlecalendar-1.0-full.jar
 
       - name: Run
         run: java -jar toernooinl2googlecalendar-1.0-full.jar
