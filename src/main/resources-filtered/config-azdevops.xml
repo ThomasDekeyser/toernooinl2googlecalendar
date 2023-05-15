@@ -1,8 +1,0 @@
-<config>
-	<google>
-		<clientSecrets>${env.GOOGLE_CLIENT_SECRET_PBO_SECUREFILEPATH}</clientSecrets>
-		<credentialStore>${env.GOOGLE_CLIENT_SECRET_STORE_PBO_SECUREFILEPATH}</credentialStore>
-	</google>
-
-	<pbo>http://competitie.badminton-pbo.be/api/calendarSync</pbo>
-</config>

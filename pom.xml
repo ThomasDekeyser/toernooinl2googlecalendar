@@ -1,16 +1,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <!-- 
-  <parent>
-    <groupId>com.google</groupId>
-    <artifactId>google</artifactId>
-    <version>5</version>
-  </parent>
-  -->
+
   <groupId>be.gentsebc</groupId>
   <artifactId>toernooinl2googlecalendar</artifactId>
-  <version>1</version>
+  <version>1.0</version>
   <name>Create and sync per team a seperate googlecalendar.</name>
 
   <prerequisites>
@@ -37,60 +31,43 @@
             <directory>src/main/resources</directory>
             <filtering>false</filtering>
         </resource>
-        <resource>
-            <directory>src/main/resources-filtered</directory>
-            <filtering>true</filtering>
-        </resource>
     </resources>
     <plugins>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
-        <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
-        </configuration>
-      </plugin>
-      <plugin>
-      	<groupId>org.apache.maven.plugins</groupId>
-      	<artifactId>maven-assembly-plugin</artifactId>
-      	<configuration>
-   			<finalName>tnl2googlecal</finalName>
-   			<appendAssemblyId>false</appendAssemblyId>
-   			<descriptors>
-   				<descriptor>assembly.xml</descriptor>
-   			</descriptors>
-      	</configuration>
-      	<executions>
-      		<execution>
-      			<id>assembly</id>
-      			<phase>package</phase>
-      			<goals>
-      				<goal>single</goal>
-      			</goals>
-      		</execution>
-      	</executions>
-      </plugin>
         <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>1.6.0</version>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>2.3.2</version>
+          <configuration>
+            <source>1.8</source>
+            <target>1.8</target>
+          </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>3.1.1</version>
+
+            <configuration>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+                <finalName>${project.artifactId}-${project.version}-full</finalName>
+                <appendAssemblyId>false</appendAssemblyId>
+                <archive>
+                    <manifest>
+                        <mainClass>be.gentsebc.calendar.sync.CalendarSync</mainClass>
+                    </manifest>
+                </archive>
+            </configuration>
+
             <executions>
                 <execution>
+                    <id>make-assembly</id>
+                    <phase>package</phase>
                     <goals>
-                        <goal>java</goal>
+                        <goal>single</goal>
                     </goals>
                 </execution>
             </executions>
-            <configuration>
-                <mainClass>be.gentsebc.calendar.sync.CalendarSync</mainClass>
-                <systemProperties>
-                    <systemProperty>
-                        <key>config</key>
-                        <value>target/classes/config-azdevops.xml</value>
-                    </systemProperty>
-                </systemProperties>
-            </configuration>
         </plugin>
     </plugins>
     <finalName>${project.artifactId}-${project.version}</finalName>

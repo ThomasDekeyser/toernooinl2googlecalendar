@@ -4,7 +4,7 @@ As toernooi.nl has no public API, the data needs to be scrapped from toernooi.nl
 Alternativly, an XML with the necesary data can be given as well (faster)
 
 # Requirements
-* Java 1.7 runtime environment
+* Java 1.8 runtime environment
 * Possibility the run a standalone java application from cmd-line.
 * External cron-alike scheduler
 
