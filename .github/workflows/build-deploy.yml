@@ -19,7 +19,7 @@ jobs:
       - name: Build with Maven
         run: mvn clean package
 
-      - uses: actions/upload-artifact@v3
+      - uses: ncipollo/release-action@v1
         with:
-          name: toernooinl2googlecalendar-1.0-full.jar
-          path: target/toernooinl2googlecalendar-1.0-full.jar
+          artifacts: "target/toernooinl2googlecalendar-1.0-full.jar"
+          tag: "1.0"
