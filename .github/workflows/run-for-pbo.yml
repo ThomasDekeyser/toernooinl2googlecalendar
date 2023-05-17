@@ -39,6 +39,10 @@ jobs:
           cat config/calendar_secret_template.json
         shell: bash
 
+      # Create dummy commit when needed to keep repo alive (workaround)
+      # https://github.com/gautamkrishnar/keepalive-workflow
+      - uses: gautamkrishnar/keepalive-workflow@v1
+
       - name: Run
         run: java -Dconfig=config/config-template.xml -jar toernooinl2googlecalendar-1.0-full.jar
 
