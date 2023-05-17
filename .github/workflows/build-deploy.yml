@@ -22,4 +22,5 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "target/toernooinl2googlecalendar-1.0-full.jar"
+          allowUpdates: true
           tag: "1.0"
