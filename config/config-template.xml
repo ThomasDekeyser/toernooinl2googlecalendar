@@ -6,4 +6,5 @@
 
     <pbo>http://competitie.badminton-pbo.be/api/calendarSync</pbo>
     <pboCompetitionId>F77C0BDF-25D4-4822-92BD-1078E58EEDC8</pboCompetitionId>
+    <sleepTimeToAvoidGoogleRateLimitMs>10</sleepTimeToAvoidGoogleRateLimitMs>
 </config>

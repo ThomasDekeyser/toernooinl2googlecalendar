@@ -1,24 +1,7 @@
 package be.gentsebc.calendar.sync;
 
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.util.DateTime;
-import com.google.api.services.calendar.model.*;
-import com.google.api.services.calendar.model.AclRule.Scope;
-import com.google.api.services.calendar.model.Calendar;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-import org.apache.log4j.Logger;
-import org.joox.JOOX;
-import org.joox.Match;
-import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
+import static org.joox.JOOX.$;
 
-import javax.xml.parsers.DocumentBuilder;
 import java.io.IOException;
 import java.net.URL;
 import java.text.DateFormat;
@@ -26,9 +9,33 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
 
-import static org.joox.JOOX.$;
+import javax.xml.parsers.DocumentBuilder;
+
+import org.apache.log4j.Logger;
+import org.joox.JOOX;
+import org.joox.Match;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
+
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestFactory;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.util.DateTime;
+import com.google.api.services.calendar.model.AclRule;
+import com.google.api.services.calendar.model.AclRule.Scope;
+import com.google.api.services.calendar.model.Calendar;
+import com.google.api.services.calendar.model.Event;
+import com.google.api.services.calendar.model.EventDateTime;
+import com.google.api.services.calendar.model.Events;
+import com.google.common.base.Strings;
 
 /**
  * @author Thomas Dekeyser
@@ -36,23 +43,19 @@ import static org.joox.JOOX.$;
 public class CalendarSynchronizer {
 
 
-    private static Logger logger = Logger.getLogger(CalendarSynchronizer.class);
+    private static final Logger logger = Logger.getLogger(CalendarSynchronizer.class);
     private static com.google.api.services.calendar.Calendar client;
-    private static int SLEEP_TIME_TO_AVOID_USER_RATE_LIMITS_AT_GOOGLE = 1000;
-    private static List<String> CALENDAR_NAMES_TO_IGNORE = ImmutableList.<String>builder()
-            .add("pbo.competitie.agenda@gmail.com")
-            .add("Feestdagen in België")
-            .build();
 
-
-    private DateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-    private Document config;
+    private final DateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+    private final Document config;
     private Document document;
-    private ToernooiNlGrapper toernooiNlGrapper;
+    private final ToernooiNlGrapper toernooiNlGrapper;
+    private final int sleepTimeToAvoidGoogleRateLimitsMs;
 
     public CalendarSynchronizer(Document myConfig, com.google.api.services.calendar.Calendar myClient) throws IOException {
         config = myConfig;
         client = myClient;
+        sleepTimeToAvoidGoogleRateLimitsMs = Integer.parseInt($(config).xpath("/config/sleepTimeToAvoidGoogleRateLimitMs").content());
         this.toernooiNlGrapper = new ToernooiNlGrapper($(config).xpath("/config/pboCompetitionId").content());
     }
 
@@ -98,7 +101,7 @@ public class CalendarSynchronizer {
             Events existingEvents = client.events().list(calendarId).setMaxResults(2500).setTimeMin(filterStartDate).execute();
             logger.info("Starting sync for calendar " + teamCalendar);
             try {
-                Thread.sleep(SLEEP_TIME_TO_AVOID_USER_RATE_LIMITS_AT_GOOGLE);
+                Thread.sleep(sleepTimeToAvoidGoogleRateLimitsMs);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -196,7 +199,7 @@ public class CalendarSynchronizer {
 
             client.events().delete(calendarId, matchingEvent.getId()).execute();
             try {
-                Thread.sleep(SLEEP_TIME_TO_AVOID_USER_RATE_LIMITS_AT_GOOGLE);
+                Thread.sleep(sleepTimeToAvoidGoogleRateLimitsMs);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -206,7 +209,7 @@ public class CalendarSynchronizer {
         }
         client.events().insert(calendarId, event).execute();
         try {
-            Thread.sleep(SLEEP_TIME_TO_AVOID_USER_RATE_LIMITS_AT_GOOGLE);
+            Thread.sleep(sleepTimeToAvoidGoogleRateLimitsMs);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
