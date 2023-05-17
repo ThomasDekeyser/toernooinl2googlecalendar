@@ -28,10 +28,10 @@ jobs:
           ACCESS_TOKEN: ${{secrets.ACCESS_TOKEN}}
           REFRESH_TOKEN: ${{secrets.REFRESH_TOKEN}}
         run: |-
-          sed -i "s/CLIENT_ID/$CLIENT_ID/g" "config/client_secret_template.json"
-          sed -i "s/CLIENT_SECRET/$CLIENT_SECRET/g" "config/client_secret_template.json"
-          sed -i "s/ACCESS_TOKEN/$ACCESS_TOKEN/g" "config/calendar_secret_template.json"
-          sed -i "s/REFRESH_TOKEN/$REFRESH_TOKEN/g" "config/calendar_secret_template.json"
+          sed -i "s|CLIENT_ID|$CLIENT_ID|g" "config/client_secret_template.json"
+          sed -i "s|CLIENT_SECRET|$CLIENT_SECRET|g" "config/client_secret_template.json"
+          sed -i "s|ACCESS_TOKEN|$ACCESS_TOKEN|g" "config/calendar_secret_template.json"
+          sed -i "s|REFRESH_TOKEN|$REFRESH_TOKEN|g" "config/calendar_secret_template.json"
 
           cat config/client_secret_template.json
           cat config/calendar_secret_template.json
