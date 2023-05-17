@@ -38,5 +38,5 @@ jobs:
         shell: bash
 
       - name: Run
-        run: java -jar toernooinl2googlecalendar-1.0-full.jar
+        run: java -Dconfig=config/config-template.xml -jar toernooinl2googlecalendar-1.0-full.jar
 
