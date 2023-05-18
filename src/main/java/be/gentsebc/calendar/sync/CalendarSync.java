@@ -103,7 +103,7 @@ public class CalendarSync {
             t.printStackTrace();
         }
         logger.info("CalendarSync ended");
-        System.exit(1);
+        System.exit(0);
     }
 
     private static void loadConfiguration() throws SAXException, IOException {
