@@ -132,7 +132,8 @@ public class CalendarSynchronizer {
             logger.debug("Checking event " + subject);
         }
         String locationDescription = valueEvent.find("location").content();
-        locationDescription = Strings.isNullOrEmpty(locationDescription) ? this.toernooiNlGrapper.getLocationDescription(valueEvent.find("matchId").content()) : locationDescription;
+        locationDescription = Strings.isNullOrEmpty(locationDescription) && !Strings.isNullOrEmpty(valueEvent.find("matchId").content()) ?
+                              this.toernooiNlGrapper.getLocationDescription(valueEvent.find("matchId").content()) : locationDescription;
         List<Event> matchingEvents = new ArrayList<>();
 
         Event event = new Event();
