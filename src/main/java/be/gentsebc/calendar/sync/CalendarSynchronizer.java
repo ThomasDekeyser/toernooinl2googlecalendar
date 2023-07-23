@@ -46,7 +46,14 @@ public class CalendarSynchronizer {
     private static final Logger logger = Logger.getLogger(CalendarSynchronizer.class);
     private static com.google.api.services.calendar.Calendar client;
 
-    private final DateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+    private static final DateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+
+    private static final TimeZone brussels = TimeZone.getTimeZone("Europe/Brussels");
+
+    static {
+        df.setTimeZone(brussels);
+    }
+
     private final Document config;
     private Document document;
     private final ToernooiNlGrapper toernooiNlGrapper;
@@ -148,8 +155,8 @@ public class CalendarSynchronizer {
             logger.error("Unable to parse date for event " + subject);
             throw e;
         }
-        DateTime start = new DateTime(startDate, TimeZone.getTimeZone("Europe/Brussels"));
-        DateTime end = new DateTime(endDate, TimeZone.getTimeZone("Europe/Brussels"));
+        DateTime start = new DateTime(startDate, brussels);
+        DateTime end = new DateTime(endDate, brussels);
         event.setStart(new EventDateTime().setDateTime(start));
         event.setEnd(new EventDateTime().setDateTime(end));
 
