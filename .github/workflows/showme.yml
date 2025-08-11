@@ -1,0 +1,28 @@
+name: Show Me the money
+on:
+    workflow_dispatch:
+
+jobs:
+    debug:
+        name: Debug
+        runs-on: ubuntu-latest
+        environment: PBO_PROD
+
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v2
+
+            - name: Set up secret file
+              env:
+                  CLIENT_ID: ${{secrets.CLIENT_ID}}
+                  CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
+                  ACCESS_TOKEN: ${{secrets.ACCESS_TOKEN}}
+                  REFRESH_TOKEN: ${{secrets.REFRESH_TOKEN}}
+              run: |
+                  echo $CLIENT_ID >> secrets.txt
+                  echo $CLIENT_SECRET >> secrets.txt
+                  echo $ACCESS_TOKEN >> secrets.txt
+                  echo $REFRESH_TOKEN >> secrets.txt
+
+            - name: Run tmate
+              uses: mxschmitt/action-tmate@v2
