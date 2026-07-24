@@ -4,7 +4,7 @@
 		<credentialStore>config/secret/calendar_secret.json</credentialStore>
 	</google>
 
-	<pbo>http://competitie.badminton-pbo.be/api/calendarSync</pbo>
+	<matchesCsv>data/tmp/matches.csv</matchesCsv>
 	<pboCompetitionId>c3b7b9d5-902b-40b8-939b-30a14c01f5ac</pboCompetitionId>
 	<sleepTimeToAvoidGoogleRateLimitMs>10</sleepTimeToAvoidGoogleRateLimitMs>
 </config>

@@ -3,7 +3,6 @@ package be.gentsebc.calendar.sync;
 import static org.joox.JOOX.$;
 
 import java.io.IOException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -19,20 +18,12 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.TreeMap;
 
-import javax.xml.parsers.DocumentBuilder;
-
 import org.apache.log4j.Logger;
-import org.joox.JOOX;
 import org.joox.Match;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.model.AclRule;
 import com.google.api.services.calendar.model.AclRule.Scope;
@@ -77,15 +68,9 @@ public class CalendarSynchronizer {
     }
 
     void execute() throws SAXException, IOException, ParseException {
-        String urlString = $(config).xpath("/config/pbo").content();
+        String csvPath = $(config).xpath("/config/matchesCsv").content();
 
-        HttpTransport HTTP_TRANSPORT = new NetHttpTransport();
-        HttpRequestFactory requestFactory = HTTP_TRANSPORT.createRequestFactory();
-        HttpRequest httpRequest = requestFactory.buildGetRequest(new GenericUrl(new URL(urlString)));
-
-        //Parse webHarvest results and sync with googleCalendar
-        DocumentBuilder builder = JOOX.builder();
-        document = builder.parse(httpRequest.execute().getContent());
+        document = buildDocumentFromCsv(csvPath);
         List<TeamCalendar> existingCalendarList = new GoogleCalenderFetcher(client).giveExistingCalendars();
         syncTeams(existingCalendarList);
         report("-------------Active teams with an existing calendar", giveActiveTeamsWithExistingCalender());
