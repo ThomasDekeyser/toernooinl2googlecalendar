@@ -50,8 +50,13 @@ public class CalendarSynchronizer {
 
     private static final TimeZone brussels = TimeZone.getTimeZone("Europe/Brussels");
 
+    private static final DateFormat CSV_IN = new SimpleDateFormat("d-M-yyyy H:mm:ss");
+    private static final DateFormat XML_OUT = new SimpleDateFormat("d/M/yyyy H:mm:ss");
+
     static {
         df.setTimeZone(brussels);
+        CSV_IN.setTimeZone(brussels);
+        XML_OUT.setTimeZone(brussels);
     }
 
     private final Document config;
@@ -295,5 +300,17 @@ public class CalendarSynchronizer {
         return result;
     }
 
+    static String stripTeamIndex(String rawName) {
+        return rawName.replaceAll("\\s*\\(\\d+\\)\\s*$", "").trim();
+    }
+
+    static String toXmlStart(String plannedTime) throws ParseException {
+        return XML_OUT.format(CSV_IN.parse(plannedTime));
+    }
+
+    static String toXmlEnd(String plannedTime) throws ParseException {
+        Date start = CSV_IN.parse(plannedTime);
+        return XML_OUT.format(new Date(start.getTime() + 3L * 60 * 60 * 1000));
+    }
 
 }
