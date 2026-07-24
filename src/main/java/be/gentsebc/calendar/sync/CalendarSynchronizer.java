@@ -4,6 +4,9 @@ import static org.joox.JOOX.$;
 
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -12,7 +15,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
+import java.util.TreeMap;
 
 import javax.xml.parsers.DocumentBuilder;
 
@@ -311,6 +316,59 @@ public class CalendarSynchronizer {
     static String toXmlEnd(String plannedTime) throws ParseException {
         Date start = CSV_IN.parse(plannedTime);
         return XML_OUT.format(new Date(start.getTime() + 3L * 60 * 60 * 1000));
+    }
+
+    private static final class EventRow {
+        final String matchId;
+        final String subject;
+        final String start;
+        final String end;
+        EventRow(String matchId, String subject, String start, String end) {
+            this.matchId = matchId;
+            this.subject = subject;
+            this.start = start;
+            this.end = end;
+        }
+    }
+
+    static Document buildDocumentFromCsv(String csvPath) throws IOException, ParseException {
+        List<String> lines = Files.readAllLines(Paths.get(csvPath), StandardCharsets.UTF_8);
+        Map<String, List<EventRow>> teamToEvents = new TreeMap<>();
+
+        for (int i = 1; i < lines.size(); i++) { // skip header
+            String line = lines.get(i);
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+            String[] c = line.split(";", -1);
+            if (c.length < 17) {
+                continue;
+            }
+            String matchId = c[1];
+            String team1 = stripTeamIndex(c[11]);
+            String team2 = stripTeamIndex(c[13]);
+            String plannedTime = c[16];
+            String subject = team1 + " - " + team2;
+            EventRow row = new EventRow(matchId, subject, toXmlStart(plannedTime), toXmlEnd(plannedTime));
+
+            teamToEvents.computeIfAbsent(team1, k -> new ArrayList<>()).add(row);
+            teamToEvents.computeIfAbsent(team2, k -> new ArrayList<>()).add(row);
+        }
+
+        List<Match> teamElements = new ArrayList<>();
+        for (Map.Entry<String, List<EventRow>> entry : teamToEvents.entrySet()) {
+            List<Match> eventElements = new ArrayList<>();
+            for (EventRow row : entry.getValue()) {
+                eventElements.add($("event",
+                        $("matchId", row.matchId),
+                        $("subject", row.subject),
+                        $("location", ""),
+                        $("startDateTime", row.start),
+                        $("endDateTime", row.end)));
+            }
+            teamElements.add($("team", eventElements.toArray(new Match[0])).attr("name", entry.getKey()));
+        }
+        return $("teams", teamElements.toArray(new Match[0])).document();
     }
 
 }
