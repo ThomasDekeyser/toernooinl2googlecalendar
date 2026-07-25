@@ -23,4 +23,4 @@ jobs:
         with:
           artifacts: "target/toernooinl2googlecalendar-1.0-full.jar"
           allowUpdates: true
-          tag: "1.0"
+          tag: "2.0"
