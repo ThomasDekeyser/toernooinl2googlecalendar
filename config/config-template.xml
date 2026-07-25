@@ -5,6 +5,6 @@
     </google>
 
     <matchesCsv>data/tmp/matches.csv</matchesCsv>
-    <pboCompetitionId>c3b7b9d5-902b-40b8-939b-30a14c01f5ac</pboCompetitionId>
+    <pboCompetitionId>F4D8C93E-D12D-4116-86CF-A63A6B9B6046</pboCompetitionId>
     <sleepTimeToAvoidGoogleRateLimitMs>10</sleepTimeToAvoidGoogleRateLimitMs>
 </config>
