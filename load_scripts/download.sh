@@ -12,6 +12,7 @@ PBO_OVL_GID='3825E3C5-1371-4FF6-94AF-C4A3B152802A'
 USER_AGENT='User-Agent=Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:48.0) Gecko/20100101 Firefox/48.0'
 COOKIES_PATH='../data/tmp/cookie.txt'
 
+mkdir -p ../data/tmp
 rm ../data/tmp/*
 
 # Setting cookie to bypass "do you accept cookies" permission

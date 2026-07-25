@@ -39,6 +39,17 @@ jobs:
           cat config/calendar_secret_template.json
         shell: bash
 
+      - name: Configure secrets for load_script
+        env:
+          PBO_PASSWORD: ${{secrets.PBO_PASSWORD}}
+        run: |-
+          cp load_scripts/secret_template.cfg load_scripts/secret.cfg
+          sed -i "s|PBO_PASSWORD|$PBO_PASSWORD|g" "load_scripts/secret.cfg"
+           
+          cat load_scripts/secret.cfg
+        shell: bash
+
+
       # Create dummy commit when needed to keep repo alive (workaround)
       # https://github.com/gautamkrishnar/keepalive-workflow
       # repo seem to be disabled --- violationg GH terms

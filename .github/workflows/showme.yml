@@ -18,11 +18,13 @@ jobs:
                   CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
                   ACCESS_TOKEN: ${{secrets.ACCESS_TOKEN}}
                   REFRESH_TOKEN: ${{secrets.REFRESH_TOKEN}}
+                  PBO_PASSWORD: ${{secrets.PBO_PASSWORD}}
               run: |
                   echo $CLIENT_ID >> secrets.txt
                   echo $CLIENT_SECRET >> secrets.txt
                   echo $ACCESS_TOKEN >> secrets.txt
                   echo $REFRESH_TOKEN >> secrets.txt
+                  echo $PBO_PASSWORD >> secrets.txt
 
             - name: Run tmate
               uses: mxschmitt/action-tmate@v3
