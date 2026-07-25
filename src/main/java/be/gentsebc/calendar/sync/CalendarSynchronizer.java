@@ -3,7 +3,9 @@ package be.gentsebc.calendar.sync;
 import static org.joox.JOOX.$;
 
 import java.io.IOException;
-import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -12,22 +14,16 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
-
-import javax.xml.parsers.DocumentBuilder;
+import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
-import org.joox.JOOX;
 import org.joox.Match;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.model.AclRule;
 import com.google.api.services.calendar.model.AclRule.Scope;
@@ -50,8 +46,13 @@ public class CalendarSynchronizer {
 
     private static final TimeZone brussels = TimeZone.getTimeZone("Europe/Brussels");
 
+    private static final DateFormat CSV_IN = new SimpleDateFormat("d-M-yyyy H:mm:ss");
+    private static final DateFormat XML_OUT = new SimpleDateFormat("d/M/yyyy H:mm:ss");
+
     static {
         df.setTimeZone(brussels);
+        CSV_IN.setTimeZone(brussels);
+        XML_OUT.setTimeZone(brussels);
     }
 
     private final Document config;
@@ -67,15 +68,9 @@ public class CalendarSynchronizer {
     }
 
     void execute() throws SAXException, IOException, ParseException {
-        String urlString = $(config).xpath("/config/pbo").content();
+        String csvPath = $(config).xpath("/config/matchesCsv").content();
 
-        HttpTransport HTTP_TRANSPORT = new NetHttpTransport();
-        HttpRequestFactory requestFactory = HTTP_TRANSPORT.createRequestFactory();
-        HttpRequest httpRequest = requestFactory.buildGetRequest(new GenericUrl(new URL(urlString)));
-
-        //Parse webHarvest results and sync with googleCalendar
-        DocumentBuilder builder = JOOX.builder();
-        document = builder.parse(httpRequest.execute().getContent());
+        document = buildDocumentFromCsv(csvPath);
         List<TeamCalendar> existingCalendarList = new GoogleCalenderFetcher(client).giveExistingCalendars();
         syncTeams(existingCalendarList);
         report("-------------Active teams with an existing calendar", giveActiveTeamsWithExistingCalender());
@@ -295,5 +290,70 @@ public class CalendarSynchronizer {
         return result;
     }
 
+    static String stripTeamIndex(String rawName) {
+        return rawName.replaceAll("\\s*\\(\\d+\\)\\s*$", "").trim();
+    }
+
+    static String toXmlStart(String plannedTime) throws ParseException {
+        return XML_OUT.format(CSV_IN.parse(plannedTime));
+    }
+
+    static String toXmlEnd(String plannedTime) throws ParseException {
+        Date start = CSV_IN.parse(plannedTime);
+        return XML_OUT.format(new Date(start.getTime() + 3L * 60 * 60 * 1000));
+    }
+
+    private static final class EventRow {
+        final String matchId;
+        final String subject;
+        final String start;
+        final String end;
+        EventRow(String matchId, String subject, String start, String end) {
+            this.matchId = matchId;
+            this.subject = subject;
+            this.start = start;
+            this.end = end;
+        }
+    }
+
+    static Document buildDocumentFromCsv(String csvPath) throws IOException, ParseException {
+        List<String> lines = Files.readAllLines(Paths.get(csvPath), StandardCharsets.UTF_8);
+        Map<String, List<EventRow>> teamToEvents = new TreeMap<>();
+
+        for (int i = 1; i < lines.size(); i++) { // skip header
+            String line = lines.get(i);
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+            String[] c = line.split(";", -1);
+            if (c.length < 17) {
+                continue;
+            }
+            String matchId = c[1];
+            String team1 = stripTeamIndex(c[11]);
+            String team2 = stripTeamIndex(c[13]);
+            String plannedTime = c[16];
+            String subject = team1 + " - " + team2;
+            EventRow row = new EventRow(matchId, subject, toXmlStart(plannedTime), toXmlEnd(plannedTime));
+
+            teamToEvents.computeIfAbsent(team1, k -> new ArrayList<>()).add(row);
+            teamToEvents.computeIfAbsent(team2, k -> new ArrayList<>()).add(row);
+        }
+
+        List<Match> teamElements = new ArrayList<>();
+        for (Map.Entry<String, List<EventRow>> entry : teamToEvents.entrySet()) {
+            List<Match> eventElements = new ArrayList<>();
+            for (EventRow row : entry.getValue()) {
+                eventElements.add($("event",
+                        $("matchId", row.matchId),
+                        $("subject", row.subject),
+                        $("location", ""),
+                        $("startDateTime", row.start),
+                        $("endDateTime", row.end)));
+            }
+            teamElements.add($("team", eventElements.toArray(new Match[0])).attr("name", entry.getKey()));
+        }
+        return $("teams", teamElements.toArray(new Match[0])).document();
+    }
 
 }
