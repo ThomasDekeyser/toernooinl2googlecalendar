@@ -5,6 +5,7 @@ import static org.joox.JOOX.$;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -17,6 +18,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.TreeMap;
+
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.apache.log4j.Logger;
 import org.joox.Match;
@@ -71,6 +79,7 @@ public class CalendarSynchronizer {
         String csvPath = $(config).xpath("/config/matchesCsv").content();
 
         document = buildDocumentFromCsv(csvPath);
+        writeDocumentToXml(document, csvPath);
         List<TeamCalendar> existingCalendarList = new GoogleCalenderFetcher(client).giveExistingCalendars();
         syncTeams(existingCalendarList);
         report("-------------Active teams with an existing calendar", giveActiveTeamsWithExistingCalender());
@@ -354,6 +363,30 @@ public class CalendarSynchronizer {
             teamElements.add($("team", eventElements.toArray(new Match[0])).attr("name", entry.getKey()));
         }
         return $("teams", teamElements.toArray(new Match[0])).document();
+    }
+
+    /**
+     * Serialize the built sync document to an XML file next to the incoming CSV
+     * (same directory, same base name with a {@code .xml} extension), so the
+     * generated data can be inspected and reused as the faster XML input path.
+     */
+    static void writeDocumentToXml(Document document, String csvPath) throws IOException {
+        Path csv = Paths.get(csvPath);
+        String fileName = csv.getFileName().toString();
+        int dot = fileName.lastIndexOf('.');
+        String base = dot >= 0 ? fileName.substring(0, dot) : fileName;
+        Path xmlPath = csv.resolveSibling(base + ".xml");
+
+        try {
+            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+            transformer.transform(new DOMSource(document), new StreamResult(xmlPath.toFile()));
+        } catch (TransformerException e) {
+            throw new IOException("Failed to write sync XML to " + xmlPath, e);
+        }
+        logger.info("Wrote sync XML to " + xmlPath);
     }
 
 }
