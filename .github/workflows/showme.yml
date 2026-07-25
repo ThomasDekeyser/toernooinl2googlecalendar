@@ -25,4 +25,4 @@ jobs:
                   echo $REFRESH_TOKEN >> secrets.txt
 
             - name: Run tmate
-              uses: mxschmitt/action-tmate@v2
+              uses: mxschmitt/action-tmate@v3
