@@ -55,6 +55,15 @@ jobs:
       # repo seem to be disabled --- violationg GH terms
       # - uses: gautamkrishnar/keepalive-workflow@v1
 
+      - name: Download data from toernooi.nl
+        run: bash download.sh
+        working-directory: load_scripts
+        shell: bash
+
+      - name: Debug - first lines of matches.csv
+        run: head data/tmp/matches.csv
+        shell: bash
+
       - name: Run
         run: java -Dconfig=config/config-template.xml -jar toernooinl2googlecalendar-1.0-full.jar
 
