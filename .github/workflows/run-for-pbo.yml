@@ -3,7 +3,7 @@ name: Run For PBO
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 5 * * *'
+    - cron: '07 5 * * *'
 jobs:
   build:
     name: Run
